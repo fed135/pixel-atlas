@@ -1,0 +1,160 @@
+<style>
+  *{ margin: 0px; padding: 0px; }
+  #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100px; border-bottom: 2px solid #ccc; }
+  #tiles { position: relative; top: 100px; left: 0; float: left; width: 250px; height: calc(100% - 102px); border-top: 2px solid #999; border-right: 2px solid #ccc; overflow-y: scroll; }
+  #arrangements { position: relative; top: 100px; left: 0; float: left; width: 250px; height: calc(100% - 102px); border-top: 2px solid #999; border-right: 2px solid #ccc; overflow-y: scroll; }
+  #workspace { background-color: #ddd; position: relative; top: 100px; left: 502px; width: calc(100% - 504px); height: calc(100% - 102px); border-top: 2px solid #999; border-left: 2px solid #999; }
+
+  #atlas-output { float: right; position: relative; width: calc(100% - 502px); height: 100%; }
+
+  #menu button { font-size: medium; top: 10px; width: 120px; right: 50px; float: right; position: relative; }
+
+  .column-section button { width: 72%; left: 14%; position: absolute; top: 10px; font-size: medium; }
+  .column-section .column-list { width: 100%; clear: both; top: 60px; position: absolute; }
+
+  td { margin: 0px; padding: 0px; width:44px; height: 44px; border:solid 1px black; }
+  table { border-spacing:0px; border-collapse: collapse; position: absolute; left:5px; top: 35px;}
+</style>
+<body>
+  <div id=menu>
+    <textarea id=atlas-output></textarea>
+    <button>Load atlas</button>
+  </div>
+  <div id=tiles class=column-section>
+    <button>Create tile</button>
+    <div id=tiles-list class=column-list></div>
+  </div>
+  <div id=arrangements class=column-section>
+    <button>Create arrangement</button>
+    <div id=arrangements-list class=column-list></div>
+  </div>
+  <div id=workspace></div>
+</body><script>
+
+// On draw, create layer or arrangement: update the atlas outout
+function update() {
+  
+}
+
+// On loading atlas: clear and rebuild tile and arrangement lists and skip update
+function load() {
+  
+}
+
+/*
+const charPad = 128 - 64;
+
+function layer(tileHeight = 8) {
+  const pixels = [];
+  const layer = document.createElement('div');
+  layer.className = 'layer';
+
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+
+  let out = '0'.repeat(8 * tileHeight).split('');
+  const outBox = document.createElement('input');
+  outBox.value = binaryToHash(out);
+  controls.appendChild(outBox);
+  const parseBtn = document.createElement('button');
+  parseBtn.onclick = () => {
+    out = hashToBinary(outBox.value);
+    pixels.forEach((p) => updatePixel(p, out[p.index]));
+  };
+  parseBtn.innerHTML = 'Load';
+  controls.appendChild(parseBtn);
+  // Colors
+  const primaryBox = document.createElement('input');
+  controls.appendChild(primaryBox);
+  primaryBox.value = 'ffffff00';
+  primaryBox.onchange = () => {
+    const val = primaryBox.value;
+    pixels.forEach((p) => updatePixelColor(p, '0', val));
+  }
+
+  const secondaryBox = document.createElement('input');
+  controls.appendChild(secondaryBox);
+  secondaryBox.value = '000';
+  secondaryBox.onchange = () => {
+    const val = secondaryBox.value;
+    pixels.forEach((p) => updatePixelColor(p, '1', val));
+  }
+
+
+  const tile = document.createElement('table');
+  for (let i = 0; i < tileHeight; i++) {
+    const row = document.createElement('tr');
+    for (let u = 0; u < 8; u++) {
+      const pixel = document.createElement('td');
+      pixel.index = i * 8 + u;
+      pixel.state = '0';
+      pixel.onclick = () => {
+        updatePixel(pixel, pixel.state === '0' ? '1' : '0');
+      }
+      row.appendChild(pixel);
+      pixels.push(pixel);
+    }
+    tile.appendChild(row);
+  }
+  layer.appendChild(tile);
+
+  const removeLayer = document.createElement('button');
+  removeLayer.innerHTML = 'X';
+  removeLayer.onclick = () => {
+    document.body.removeChild(layer);
+    layer = null;
+  }
+  controls.appendChild(removeLayer);
+
+  function updatePixelColor(pixel, state, color) {
+    if (pixel.state === state) pixel.style.backgroundColor = '#' + color;
+  }
+
+  function updatePixel(pixel, value) {
+    pixel.state = value;
+    updatePixelColor(pixel, value, value === '0' ? primaryBox.value : secondaryBox.value);
+    out[pixel.index] = pixel.state;
+    outBox.value = binaryToHash(out);
+  }
+
+  const toggle = document.createElement('input');
+  toggle.type = 'checkbox';
+  toggle.checked = 'checked';
+  toggle.onchange = () => {
+    tile.style.display = tile.style.display === 'none' ? 'block' : 'none';
+  };
+  controls.appendChild(toggle);
+  layer.appendChild(controls);
+  document.body.appendChild(layer);
+}
+
+const layerHeightBox = document.createElement('input');
+layerHeightBox.value = 8;
+document.body.appendChild(layerHeightBox);
+const newLayer = document.createElement('button');
+newLayer.innerHTML = 'New layer';
+newLayer.onclick = () => layer(layerHeightBox.value);
+document.body.appendChild(newLayer);
+
+function hashToBinary(hash) {
+  const zeroPad = num => '0'.repeat(8).slice(String(num).length);
+  let h = '';
+  for (let i = 0; i < hash.length; i++) {
+    let num = (hash.charCodeAt(i) - charPad).toString(2);
+    h += zeroPad(num);
+    h += String(num);
+  }
+  return h.split('');
+}
+
+function binaryToHash(bin) {
+  let h = '';
+  for (let i = 0; i < bin.length; i += 8) {
+    h += String.fromCharCode(parseInt(bin.slice(i, i + 8).join(''), 2) + charPad);
+  }
+  return h;
+}
+
+// Coin: XddX
+*/
+</script>
