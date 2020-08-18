@@ -59,6 +59,7 @@
 /* STATE ---------------------------------------------------------------------*/
 
 const charPad = 128 - 64;
+const numColors = 4;
 let selectedTile = null;
 let selectedArrangement = null;
 let layerColors = ['black', 'red', 'green', 'blue'];
@@ -83,7 +84,7 @@ function renderLayerColors() {
   layerSelectorElem.innerHTML = '';
   layerColorElem.value = layerColors[selectedLayer];
 
-  ;[0,1,2,3].forEach((layer) => {
+  Array.from(new Array(numColors)).forEach((u, layer) => {
     const showLayerBtn = document.createElement('button');
     showLayerBtn.style.color = selectedLayer === layer ? 'white' : layerColors[layer];
     if (selectedLayer === layer) showLayerBtn.style.textShadow = '1px 1px black';
@@ -143,7 +144,7 @@ function load() {
 function encodeAtlas() {
   return [
     asHex(tiles.length),
-    ...tiles.map(tile => [0,1,2,3].reduce((acc, layer) => acc + binaryToHash(tile[layer]), [])),
+    ...tiles.map(tile => Array.from(new Array(numColors)).reduce((acc, u, layer) => acc + binaryToHash(tile[layer]), [])),
     ...arrangements.map(arrangement => `${arrangement.size}${arrangement.tiles.map(asHex).join('')}`),
   ].join('');
 }
@@ -162,15 +163,12 @@ function decodeAtlas(buf) {
 
   const numTiles = fromHex(buf.slice(0, 2));
   for (let i = 0; i < numTiles; i++) {
-    _data.tiles.push({
-      0: hashToBinary(buf.slice(2 + i *  32, 10 + i * 32)),
-      1: hashToBinary(buf.slice(10 + i * 32, 18 + i * 32)),
-      2: hashToBinary(buf.slice(18 + i * 32, 26 + i * 32)),
-      3: hashToBinary(buf.slice(26 + i * 32, 34 + i * 32))
-    });
+    _data.tiles.push(Array.from(new Array(numColors)).map((u, l) => {
+      return hashToBinary(buf.slice((l * 8 ) + 2 + i * (8 * numColors), (l * 8 ) + 10 + i * (8 * numColors)));
+    }));
   }
 
-  let caret = 2 + numTiles * 32;
+  let caret = 2 + numTiles * (8 * numColors);
   while (caret < buf.length) {
     const size = fromHex(buf.slice(caret, caret + 1));
 
@@ -210,7 +208,7 @@ function binaryToHash(buf) {
 }
 
 function renderTile(destination, tileData, isEditable) {
-  [0,1,2,3].forEach(layer => renderLayer(destination, tileData, isEditable, layer));
+  Array.from(new Array(numColors)).forEach((u, layer) => renderLayer(destination, tileData, isEditable, layer));
 }
 
 function renderLayer(destination, tileData, isEditable, layer) {
@@ -242,7 +240,7 @@ function renderLayer(destination, tileData, isEditable, layer) {
 }
 
 function createTile() {
-  tiles.push({ 0: Array.from(new Array(64)).fill('0'), 1: Array.from(new Array(64)).fill('0'), 2: Array.from(new Array(64)).fill('0'), 3: Array.from(new Array(64)).fill('0') });
+  tiles.push(Array.from(new Array(numColors)).map(() => Array.from(new Array(64)).fill('0')));
   selectTile(tiles.length -1);
   updateAtlas();
 }
