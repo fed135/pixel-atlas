@@ -5,6 +5,8 @@
   #arrangements { position: relative; top: 100px; left: 0; float: left; width: 250px; height: calc(100% - 102px); border-top: 2px solid #999; border-right: 2px solid #ccc; overflow-y: scroll; }
   #workspace { background-color: #ddd; position: relative; top: 100px; left: 502px; width: calc(100% - 504px); height: calc(100% - 102px); border-top: 2px solid #999; border-left: 2px solid #999; }
 
+  .canvas { position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: fit-content; height: fit-content; }
+
   #atlas-output { float: right; position: relative; width: calc(100% - 502px); height: 100%; }
 
   #menu button { font-size: medium; top: 10px; width: 120px; right: 50px; float: right; position: relative; }
@@ -12,129 +14,181 @@
   .column-section button { width: 72%; left: 14%; position: absolute; top: 10px; font-size: medium; }
   .column-section .column-list { width: 100%; clear: both; top: 60px; position: absolute; }
 
-  td { margin: 0px; padding: 0px; width:44px; height: 44px; border:solid 1px black; }
-  table { border-spacing:0px; border-collapse: collapse; position: absolute; left:5px; top: 35px;}
+  #layer-color { position: absolute; top: 64px; height: 28px; left: 100px; width: 80px; }
+
+  #layer-selector { position: absolute; width: 84px; height: 84; left: 5px; top: 5px; }
+  #layer-selector button { left: 0; width: 42px; height: 42px; float: left; position: relative; }
+
+  /*#canvas table { min-height: 96px; height: 40%; min-width: 96px; width: 40%; display: block; position: relative; }*/
+  .canvas td { margin: 0px; padding: 0px; width: 44px; height: 44px; border: solid 1px black; }
+  .canvas td:hover { outline: solid 1px black; border: 1px solid white; }
+  #tiles td { margin: 0px; padding: 0px; width: 5%; height: 5%; }
+  #tiles table { position: absolute; border: 1px solid grey; margin-top: -1px; width: 48px; height: 48px; }
+  table { border-spacing:0px; border-collapse: collapse; float: left; }
+
+  .list-item { clear: both; height: 47px; width: 100%; border: 1px solid #bbb; margin-bottom: -1px; }
+  .list-item:hover { background-color: #ddd; }
+  .selected { background-color: #bbb; border: 1px solid #666; }
+  .selected:hover { background-color: #aaa; border: 1px solid #666; }
+
+  .list-item .label { float: right; margin-top: 12px; margin-right: 12px; }
 </style>
 <body>
   <div id=menu>
+    <div id=layer-selector></div>
+    <input id=layer-color onblur=updateLayerColor() />
     <textarea id=atlas-output></textarea>
-    <button>Load atlas</button>
+    <button onclick=load()>Load atlas</button>
   </div>
   <div id=tiles class=column-section>
-    <button>Create tile</button>
+    <button onclick=createTile()>Create tile</button>
     <div id=tiles-list class=column-list></div>
   </div>
   <div id=arrangements class=column-section>
-    <button>Create arrangement</button>
+    <button onclick=createArrangement()>Create arrangement</button>
     <div id=arrangements-list class=column-list></div>
   </div>
-  <div id=workspace></div>
+  <div id=workspace>
+    <div id=canvas-0 class=canvas></div>
+    <div id=canvas-1 class=canvas></div>
+    <div id=canvas-2 class=canvas></div>
+    <div id=canvas-3 class=canvas></div>
+  </div>
 </body><script>
 
+/* STATE ---------------------------------------------------------------------*/
+
+const charPad = 128 - 64;
+let selectedTile = null;
+let selectedArrangement = null;
+let layerColors = ['black', 'red', 'green', 'blue'];
+let selectedLayer = 0;
+
+let tiles = [];
+let arrangements = [];
+
+let arrangementCreationInProgress = false;
+
+// Shorthands
+const atlasOutputElem = document.getElementById('atlas-output');
+const tilesListElem = document.getElementById('tiles-list');
+const arrangementsListElem = document.getElementById('arrangements-list');
+const canvasElem = [...document.getElementsByClassName('canvas')];
+const layerSelectorElem = document.getElementById('layer-selector');
+const layerColorElem = document.getElementById('layer-color');
+
+/* METHODS -------------------------------------------------------------------*/
+
+function renderLayerColors() {
+  layerSelectorElem.innerHTML = '';
+  layerColorElem.value = layerColors[selectedLayer];
+
+  ;[0,1,2,3].forEach((layer) => {
+    const showLayerBtn = document.createElement('button');
+    showLayerBtn.style.color = selectedLayer === layer ? 'white' : layerColors[layer];
+    if (selectedLayer === layer) showLayerBtn.style.textShadow = '1px 1px black';
+    showLayerBtn.style.backgroundColor = layerColors[layer];
+    showLayerBtn.innerHTML = 'X';
+    showLayerBtn.addEventListener('click', () => showLayer(layer));
+    layerSelectorElem.appendChild(showLayerBtn);
+  });
+}
+
+showLayer(0);
+renderLayerColors();
+
 // On draw, create layer or arrangement: update the atlas outout
-function update() {
-  
+function updateLists() {
+  tilesListElem.innerHTML = '';
+  arrangementsListElem.innerHTML = '';
+
+  for (let i = 0; i < tiles.length; i++) {
+    const item = document.createElement('div');
+    item.className = `list-item${(selectedTile === i) ? ' selected' : ''}`;
+    item.innerHTML = `<span class=label>Tile ${i + 1}</span>`;
+    item.addEventListener('click', () => selectTile(i));
+    renderTile(item, tiles[i]);
+    tilesListElem.appendChild(item);
+  }
+
+  for (let i = 0; i < arrangements.length; i++) {
+    const item = document.createElement('div');
+    item.className = `list-item${(selectedArrangement === i) ? ' selected' : ''}`;
+    item.innerHTML = `<span class=label>Arr. ${i + 1}</span>`;
+    item.addEventListener('click', () => selectArrangement(i));
+    const removeBtn = document.createElement('button');
+    removeBtn.value = 'X';
+    removeBtn.addEventListener('click', () => removeArrangement(i));
+    item.appendChild(removeBtn);
+
+    //arrangements[i].tiles.forEach((tile) => renderTile(item, tile));
+    arrangementsListElem.appendChild(item);
+  }
+}
+
+function updateAtlas() {
+  atlasOutputElem.value = encodeAtlas();
 }
 
 // On loading atlas: clear and rebuild tile and arrangement lists and skip update
 function load() {
-  
+  console.log('LOADING ATLAS!')
+  arrangementCreationInProgress = false;
+  const data = decodeAtlas(atlasOutputElem.value);
+  tiles = data.tiles || [];
+  arrangements = data.arrangements || [];
+  selectTile(0);
 }
 
-/*
-const charPad = 128 - 64;
-
-function layer(tileHeight = 8) {
-  const pixels = [];
-  const layer = document.createElement('div');
-  layer.className = 'layer';
-
-  const controls = document.createElement('div');
-  controls.className = 'controls';
-
-  let out = '0'.repeat(8 * tileHeight).split('');
-  const outBox = document.createElement('input');
-  outBox.value = binaryToHash(out);
-  controls.appendChild(outBox);
-  const parseBtn = document.createElement('button');
-  parseBtn.onclick = () => {
-    out = hashToBinary(outBox.value);
-    pixels.forEach((p) => updatePixel(p, out[p.index]));
-  };
-  parseBtn.innerHTML = 'Load';
-  controls.appendChild(parseBtn);
-  // Colors
-  const primaryBox = document.createElement('input');
-  controls.appendChild(primaryBox);
-  primaryBox.value = 'ffffff00';
-  primaryBox.onchange = () => {
-    const val = primaryBox.value;
-    pixels.forEach((p) => updatePixelColor(p, '0', val));
-  }
-
-  const secondaryBox = document.createElement('input');
-  controls.appendChild(secondaryBox);
-  secondaryBox.value = '000';
-  secondaryBox.onchange = () => {
-    const val = secondaryBox.value;
-    pixels.forEach((p) => updatePixelColor(p, '1', val));
-  }
-
-
-  const tile = document.createElement('table');
-  for (let i = 0; i < tileHeight; i++) {
-    const row = document.createElement('tr');
-    for (let u = 0; u < 8; u++) {
-      const pixel = document.createElement('td');
-      pixel.index = i * 8 + u;
-      pixel.state = '0';
-      pixel.onclick = () => {
-        updatePixel(pixel, pixel.state === '0' ? '1' : '0');
-      }
-      row.appendChild(pixel);
-      pixels.push(pixel);
-    }
-    tile.appendChild(row);
-  }
-  layer.appendChild(tile);
-
-  const removeLayer = document.createElement('button');
-  removeLayer.innerHTML = 'X';
-  removeLayer.onclick = () => {
-    document.body.removeChild(layer);
-    layer = null;
-  }
-  controls.appendChild(removeLayer);
-
-  function updatePixelColor(pixel, state, color) {
-    if (pixel.state === state) pixel.style.backgroundColor = '#' + color;
-  }
-
-  function updatePixel(pixel, value) {
-    pixel.state = value;
-    updatePixelColor(pixel, value, value === '0' ? primaryBox.value : secondaryBox.value);
-    out[pixel.index] = pixel.state;
-    outBox.value = binaryToHash(out);
-  }
-
-  const toggle = document.createElement('input');
-  toggle.type = 'checkbox';
-  toggle.checked = 'checked';
-  toggle.onchange = () => {
-    tile.style.display = tile.style.display === 'none' ? 'block' : 'none';
-  };
-  controls.appendChild(toggle);
-  layer.appendChild(controls);
-  document.body.appendChild(layer);
+function encodeAtlas() {
+  return [
+    asHex(tiles.length),
+    ...tiles.map(tile => [0,1,2,3].reduce((acc, layer) => acc + binaryToHash(tile[layer]), [])),
+    ...arrangements.map(arrangement => `${arrangement.size}${arrangement.tiles.map(asHex).join('')}`),
+  ].join('');
 }
 
-const layerHeightBox = document.createElement('input');
-layerHeightBox.value = 8;
-document.body.appendChild(layerHeightBox);
-const newLayer = document.createElement('button');
-newLayer.innerHTML = 'New layer';
-newLayer.onclick = () => layer(layerHeightBox.value);
-document.body.appendChild(newLayer);
+function chunk(arr, chunkSize) {
+  var R = [];
+  for (var i = 0, len = arr.length; i < len; i += chunkSize) R.push(arr.slice(i, i + chunkSize));
+  return R;
+}
+
+function decodeAtlas(buf) {
+  const _data = {
+    tiles: [],
+    arrangements: [],
+  };
+
+  const numTiles = fromHex(buf.slice(0, 2));
+  for (let i = 0; i < numTiles; i++) {
+    _data.tiles.push({
+      0: hashToBinary(buf.slice(2 + i *  32, 10 + i * 32)),
+      1: hashToBinary(buf.slice(10 + i * 32, 18 + i * 32)),
+      2: hashToBinary(buf.slice(18 + i * 32, 26 + i * 32)),
+      3: hashToBinary(buf.slice(26 + i * 32, 34 + i * 32))
+    });
+  }
+
+  let caret = 2 + numTiles * 32;
+  while (caret < buf.length) {
+    const size = fromHex(buf.slice(caret, caret + 1));
+
+    _data.arrangements.push({ size, tiles: chunk(buf.slice(caret + 1, caret + 1 + (Math.pow(size, 2) * 2)), 2).map(fromHex) });
+    caret += (1 + (Math.pow(size, 2) * 2));
+  }
+
+  return _data;
+}
+
+function asHex(num) {
+  if (num < 10) return `0${num}`;
+  return Number(num).toString(16);
+}
+
+function fromHex(buf) {
+  return parseInt(buf.toString(), 16);
+}
 
 function hashToBinary(hash) {
   const zeroPad = num => '0'.repeat(8).slice(String(num).length);
@@ -147,14 +201,131 @@ function hashToBinary(hash) {
   return h.split('');
 }
 
-function binaryToHash(bin) {
+function binaryToHash(buf) {
   let h = '';
-  for (let i = 0; i < bin.length; i += 8) {
-    h += String.fromCharCode(parseInt(bin.slice(i, i + 8).join(''), 2) + charPad);
+  for (let i = 0; i < buf.length; i += 8) {
+    h += String.fromCharCode(parseInt(buf.slice(i, i + 8).join(''), 2) + charPad);
   }
   return h;
 }
 
-// Coin: XddX
-*/
+function renderTile(destination, tileData, isEditable) {
+  [0,1,2,3].forEach(layer => renderLayer(destination, tileData, isEditable, layer));
+}
+
+function renderLayer(destination, tileData, isEditable, layer) {
+  const tile = document.createElement('table');
+  for (let i = 0; i < 8; i++) {
+    const row = document.createElement('tr');
+    for (let u = 0; u < 8; u++) {
+      const pixel = document.createElement('td');
+      pixel.index = i * 8 + u;
+      pixel.state = tileData[layer][pixel.index] === '0' ? '0' : '1';
+      pixel.style.backgroundColor = pixel.state === '1' ? layerColors[layer] : '0xFFFFFF00';
+      console.log(layer, selectedLayer)
+      if (isEditable && layer === selectedLayer) {
+        //pixel.style.border = '1px solid green';
+        //pixel.addEventListener('mouseover', (evt) => console.log('over pixe', pixel.index, 'layer', layer))
+        pixel.onclick = () => {
+          //console.log('clicked', 'pixel', pixel.index, 'layer', layer)
+          updatePixel(tileData, layer, pixel.index, pixel.state === '0' ? '1' : '0');
+        }
+      }
+      /*else {
+        pixel.style.border = '1px solid red';
+      }*/
+
+      row.appendChild(pixel);
+    }
+    tile.appendChild(row);
+  }
+  destination.appendChild(tile);
+}
+
+function createTile() {
+  tiles.push({ 0: Array.from(new Array(64)).fill('0'), 1: Array.from(new Array(64)).fill('0'), 2: Array.from(new Array(64)).fill('0'), 3: Array.from(new Array(64)).fill('0') });
+  selectTile(tiles.length -1);
+  updateAtlas();
+}
+
+function selectTile(index) {
+  if (arrangementCreationInProgress) {
+    const arrIndex = arrangements.length - 1;
+    arrangements[arrIndex].tiles.push(index);
+    if (arrangements[arrIndex].tiles.length >= Math.pow(arrangements[arrIndex].size, 2)) arrangementCreationInProgress = false;
+    selectArrangement(arrIndex);
+    updateAtlas();
+    return;
+  }
+  canvasElem.forEach((canvas) => canvas.innerHTML = '');
+  selectedTile = index;
+  selectedArrangement = null;
+  canvasElem.forEach((canvas, layer) => renderLayer(canvas, tiles[index], true, layer));
+  updateLists();
+}
+
+function updatePixel(tile, layer, index, state) {
+  tile[layer][index] = state;
+  if (selectedArrangement !== null) selectArrangement(selectedArrangement);
+  else selectTile(tiles.indexOf(tile));
+  updateAtlas();
+}
+
+function createArrangement() {
+  if (!arrangementCreationInProgress) {
+    arrangementCreationInProgress = true;
+    arrangements.push({
+      size: Number(prompt('Enter size (Ex: "2" = 2x2 or 4 tiles in total)')),
+      tiles: [],
+    });
+
+    selectArrangement(arrangements.length - 1);
+  }
+}
+
+function selectArrangement(index) {
+  canvasElem.forEach((canvas) => canvas.innerHTML = '');
+  selectedTile = null;
+  selectedArrangement = index;
+  for (let i = 0; i < Math.pow(arrangements[index].size, 2); i++) {
+    if (i !== 0 && i % arrangements[index].size === 0) canvasElem.forEach((canvas) => canvas.innerHTML += '<br />');
+    if (tiles[arrangements[index].tiles[i]]) {
+      canvasElem.forEach((canvas, layer) => renderLayer(canvas, tiles[arrangements[index].tiles[i]], true, layer));
+    }
+  }
+  updateLists();
+}
+
+function removeArrangement(index) {
+  if (selectedArrangement === index) selectedArrangement = null;
+  arrangements.splice(index, 1);
+  updateLists();
+}
+
+function removeTile(index) {
+  if (selectedTile === index) selectedTile = null;
+  arrangements.forEach((arrangement) => {
+    arrangement.tiles = arrangement.tiles.map((tileIndex) => tileIndex >= index ? tileIndex - 1 : tileIndex);
+  });
+  tiles.splice(index, 1);
+  updateLists();
+}
+
+function showLayer(index) {
+  canvasElem.forEach((canvas) => canvas.style.zIndex = 0);
+  selectedLayer = index;
+  canvasElem[selectedLayer].style.zIndex = 999;
+  canvasElem[selectedLayer].style.backgroundColor = 'rgba(255,255,255,0.3)';
+  renderLayerColors();
+  if (selectedTile !== null) selectTile(selectedTile);
+  else if (selectedArrangement !== null) selectArrangement(selectedArrangement);
+}
+
+function updateLayerColor() {
+  layerColors[selectedLayer] = layerColorElem.value;
+  renderLayerColors();
+  if (selectedTile !== null) selectTile(selectedTile);
+  else if (selectedArrangement !== null) selectArrangement(selectedArrangement);
+}
+
 </script>

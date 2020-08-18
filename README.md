@@ -15,7 +15,7 @@ Arrangements = A group of tiles joined together to form a larger sprite
 ```
 AA = Number of tiles
 
-[BBBBBBBB] = A tile data, where B represents a full row in binary, ex: "%" = [00100101]
+[BBBBBBBB][BBBBBBBB][BBBBBBBB][BBBBBBBB] = A tile data, where B represents a full row in binary, ex: "%" = [00100101] There are 4 repetitions that make up the 4 colors. Each layer has it's alpha.
 
 [[C][...]] = An arrangement
 
