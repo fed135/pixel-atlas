@@ -222,7 +222,6 @@ function renderLayer(destination, tileData, isEditable, layer) {
       pixel.index = i * 8 + u;
       pixel.state = tileData[layer][pixel.index] === '0' ? '0' : '1';
       pixel.style.backgroundColor = pixel.state === '1' ? layerColors[layer] : '0xFFFFFF00';
-      console.log(layer, selectedLayer)
       if (isEditable && layer === selectedLayer) {
         //pixel.style.border = '1px solid green';
         //pixel.addEventListener('mouseover', (evt) => console.log('over pixe', pixel.index, 'layer', layer))
