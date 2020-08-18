@@ -49,10 +49,6 @@
     <div id=arrangements-list class=column-list></div>
   </div>
   <div id=workspace>
-    <div id=canvas-0 class=canvas></div>
-    <div id=canvas-1 class=canvas></div>
-    <div id=canvas-2 class=canvas></div>
-    <div id=canvas-3 class=canvas></div>
   </div>
 </body><script>
 
@@ -74,9 +70,14 @@ let arrangementCreationInProgress = false;
 const atlasOutputElem = document.getElementById('atlas-output');
 const tilesListElem = document.getElementById('tiles-list');
 const arrangementsListElem = document.getElementById('arrangements-list');
-const canvasElem = [...document.getElementsByClassName('canvas')];
 const layerSelectorElem = document.getElementById('layer-selector');
 const layerColorElem = document.getElementById('layer-color');
+
+Array.from(new Array(numColors)).forEach((u, layer) => {
+  document.getElementById('workspace').innerHTML += `<div id=canvas-${layer} class=canvas></div>`;
+});
+
+const canvasElem = [...document.getElementsByClassName('canvas')];
 
 /* METHODS -------------------------------------------------------------------*/
 
